@@ -18,7 +18,7 @@
 ### 1. 仮想環境の作成
 
 ```bash
-cd ~/kabu
+cd ~/kabu-predictor
 python3 -m venv venv
 source venv/bin/activate
 ```
