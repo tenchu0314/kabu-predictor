@@ -126,6 +126,7 @@ SCORE_WEIGHTS = {
     "prediction": 0.50,      # 予測スコア
     "fundamental": 0.25,     # ファンダメンタルスコア
     "risk_adjusted": 0.25,   # リスク調整スコア
+    "overheat_penalty": 0.30,  # 過熱ペナルティ（基本スコアに対する最大減点率）
 }
 
 # トップN銘柄数

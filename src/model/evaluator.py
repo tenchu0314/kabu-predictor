@@ -113,6 +113,7 @@ def calculate_risk_adjusted_score(
     """
     リスク調整後スコアを計算する。
     シャープレシオ的な発想で、リターン/リスク比を評価する。
+    ボラティリティや急騰による過熱感も考慮する。
 
     Parameters
     ----------
@@ -153,7 +154,11 @@ def calculate_risk_adjusted_score(
     # 勝率
     win_rate = (returns > 0).mean()
 
-    # 総合リスクスコア（0〜1に正規化）
+    # ボラティリティペナルティ（年率30%超で減点開始）
+    annual_vol = returns.std() * np.sqrt(252)
+    vol_penalty = max(0, (annual_vol - 0.30) / 0.40)  # 30%〜70% → 0〜1
+    vol_penalty = min(1, vol_penalty)
+
     # 各指標を正規化してから合成
     sharpe_score = max(0, min(1, (sharpe + 2) / 6))      # -2〜4 → 0〜1
     sortino_score = max(0, min(1, (sortino + 2) / 8))     # -2〜6 → 0〜1
@@ -161,13 +166,14 @@ def calculate_risk_adjusted_score(
     wr_score = max(0, min(1, (win_rate - 0.3) / 0.4))     # 30%〜70% → 0〜1
 
     risk_score = (
-        0.35 * sharpe_score +
-        0.25 * sortino_score +
+        0.30 * sharpe_score +
+        0.20 * sortino_score +
         0.20 * dd_score +
-        0.20 * wr_score
+        0.15 * wr_score -
+        0.15 * vol_penalty       # ボラティリティが高すぎる銘柄を減点
     )
 
-    return risk_score
+    return max(0, min(1, risk_score))
 
 
 def generate_backtest_report(
