@@ -4,12 +4,18 @@ Kabu Predictor - メインパイプライン
 全フェーズを順番に実行する。
 
 Usage:
-    python main.py                  # フルパイプライン実行
+    python main.py                  # フルパイプライン実行（全フェーズ）
+    python main.py --phase daily    # 日次実行（データ取得+予測、モデル学習なし）
+    python main.py --phase weekly   # 週次実行（銘柄更新+データ取得+モデル学習）
     python main.py --phase data     # データ取得のみ
     python main.py --phase train    # モデル学習のみ
     python main.py --phase predict  # 予測・レポートのみ
     python main.py --update-stocks  # 銘柄リスト更新
     python main.py --no-optimize    # Optuna最適化をスキップ
+
+スケジュール:
+    日次 (毎朝 6:00 JST): python main.py --phase daily
+    週次 (日曜 0:00 JST): python main.py --phase weekly
 """
 import argparse
 import sys
@@ -198,8 +204,60 @@ def phase_predict(all_data: dict):
     logger.info("Phase 4 完了")
 
 
+def run_daily():
+    """
+    日次実行: データ取得 → 特徴量生成 → 予測（既存モデル使用）
+    毎朝 6:00 JST に cron で実行する想定。
+    モデルの再学習は行わず、直近の学習済みモデルをそのまま使う。
+    """
+    start_time = datetime.now()
+    logger.info("=" * 60)
+    logger.info("Kabu Predictor - 日次予測実行")
+    logger.info(f"開始時刻: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("=" * 60)
+
+    try:
+        phase_data(update_stocks=False)
+        all_data = phase_features()
+        phase_predict(all_data)
+
+        elapsed = datetime.now() - start_time
+        logger.info(f"\n✅ 日次予測完了 (所要時間: {elapsed})")
+
+    except Exception as e:
+        logger.error(f"\n❌ 日次予測エラー: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+
+
+def run_weekly(optimize: bool = True):
+    """
+    週次実行: 銘柄リスト更新 → データ取得 → 特徴量生成 → モデル再学習
+    毎週日曜 0:00 JST に cron で実行する想定。
+    予測レポートは出さず、モデルの更新のみ行う。
+    """
+    start_time = datetime.now()
+    logger.info("=" * 60)
+    logger.info("Kabu Predictor - 週次モデル学習")
+    logger.info(f"開始時刻: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info("=" * 60)
+
+    try:
+        phase_data(update_stocks=True)
+        all_data = phase_features()
+        phase_train(all_data, optimize=optimize)
+
+        elapsed = datetime.now() - start_time
+        logger.info(f"\n✅ 週次学習完了 (所要時間: {elapsed})")
+
+    except Exception as e:
+        logger.error(f"\n❌ 週次学習エラー: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
+
+
 def run_full_pipeline(update_stocks: bool = False, optimize: bool = True):
-    """フルパイプライン実行"""
+    """フルパイプライン実行（全フェーズ）"""
     start_time = datetime.now()
     logger.info("=" * 60)
     logger.info("Kabu Predictor - フルパイプライン実行開始")
@@ -232,9 +290,9 @@ def main():
     parser = argparse.ArgumentParser(description="Kabu Predictor - 株価予測システム")
     parser.add_argument(
         "--phase",
-        choices=["data", "features", "train", "predict", "all"],
+        choices=["daily", "weekly", "data", "features", "train", "predict", "all"],
         default="all",
-        help="実行するフェーズ",
+        help="実行するフェーズ (daily=日次予測, weekly=週次学習, all=全フェーズ)",
     )
     parser.add_argument(
         "--update-stocks",
@@ -250,7 +308,11 @@ def main():
     args = parser.parse_args()
     optimize = not args.no_optimize
 
-    if args.phase == "all":
+    if args.phase == "daily":
+        run_daily()
+    elif args.phase == "weekly":
+        run_weekly(optimize=optimize)
+    elif args.phase == "all":
         run_full_pipeline(
             update_stocks=args.update_stocks,
             optimize=optimize,

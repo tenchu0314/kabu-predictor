@@ -113,7 +113,7 @@ def filter_by_market_cap(
     yfinanceから時価総額を取得して閾値以上のもののみ返す。
     """
     logger.info(
-        f"時価総額フィルタリング中... (閾値: {threshold/1e9:.0f}億円, 対象: {len(stocks)} 件)"
+        f"時価総額フィルタリング中... (閾値: {threshold/1e8:.0f}億円, 対象: {len(stocks)} 件)"
     )
 
     filtered = []
@@ -133,7 +133,7 @@ def filter_by_market_cap(
                 filtered.append(stock)
                 logger.debug(
                     f"  ✓ {stock['code']} {stock['name']}: "
-                    f"時価総額 {market_cap/1e9:.0f}億円"
+                    f"時価総額 {market_cap/1e8:.0f}億円"
                 )
 
         except Exception as e:
