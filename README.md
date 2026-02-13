@@ -9,8 +9,9 @@
 - 📈 テクニカル指標（40+）、ファンダメンタル、マーケット連動指標を活用
 - 🔄 **ウォークフォワード検証**によるバックテスト
 - 🎯 翌日/5日/20日/60日の**マルチホライゾン予測**
-- 💎 予測スコア × ファンダメンタル × リスク調整の**総合スコアリング**
+- ❤️ 予測スコア × ファンダメンタル × リスク調整の**総合スコアリング**
 - 🧠 **Gemini API**による銘柄レビュー・コメント生成
+- 📢 **Discord / メール通知**で結果を自動配信
 - ⏰ cron対応の自動実行（日次予測 + 週次モデル学習）
 
 ## 推奨環境
@@ -44,8 +45,12 @@ pip install -r requirements.txt
 ### 3. 環境変数の設定
 
 ```bash
-# Gemini API Keyを設定
-echo 'export GEMINI_API_KEY=your-api-key-here' > .env
+cp .env.example .env
+```
+
+`.env` を編集して、必要な API キーを設定してください。詳細は `.env.example` を参照してください。
+
+```bash
 source .env
 ```
 
@@ -118,7 +123,41 @@ main.py
     ├── 総合スコア（予測 + ファンダ + リスク）
     ├── Top 10 ランキング
     ├── Gemini レビュー
-    └── 日次レポート出力
+    ├── 日次レポート出力
+    └── Discord / メール通知
+```
+
+## 通知設定
+
+予測結果を Discord またはメールで自動配信できます。優先順位は **Discord → メール** で、どちらも未設定なら通知なしで動作します。
+
+### Discord（推奨）
+
+`.env` に以下を設定するだけで、指定チャンネルにランキングと Gemini レビューが届きます。
+
+```bash
+export DISCORD_BOT_TOKEN=your-bot-token
+export DISCORD_CHANNEL_ID=your-channel-id
+```
+
+- **Bot Token**: [Discord Developer Portal](https://discord.com/developers/applications) → Bot → Token
+- **Channel ID**: Discord の設定 → 詳細設定 → 開発者モード ON → チャンネルを右クリック → 「IDをコピー」
+
+> 💡 Bot には対象チャンネルへの「メッセージを送信」権限が必要です。
+
+### メール（オプション）
+
+Discord を使わない場合のフォールバックとしてメール通知も利用できます。
+
+```bash
+# ローカル sendmail を使う場合（EMAIL_TO のみでOK）
+export EMAIL_TO=your-email@example.com
+
+# 外部 SMTP を使う場合（Gmail 等）
+export SMTP_SERVER=smtp.gmail.com
+export SMTP_PORT=587
+export SMTP_USER=your-email@gmail.com
+export SMTP_PASSWORD=your-app-password
 ```
 
 ## 予測ホライゾンと重み
