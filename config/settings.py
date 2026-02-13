@@ -37,7 +37,7 @@ GEMINI_API_KEY = _env("GEMINI_API_KEY")
 # データ取得設定
 # ============================================================
 # 過去データ取得期間
-HISTORY_PERIOD = "2y"
+HISTORY_PERIOD = "5y"
 
 # 時価総額フィルタ（円）: 1000億円
 MARKET_CAP_THRESHOLD = 100_000_000_000

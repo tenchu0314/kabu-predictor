@@ -104,7 +104,7 @@ bash scripts/setup_cron.sh
 main.py
 ├── Phase 1: データ取得
 │   ├── JPX銘柄リスト → 時価総額フィルタ
-│   ├── 株価データ（yfinance, 過去2年）
+│   ├── 株価データ（yfinance, 過去5年）
 │   ├── 指数データ（日経225, ダウ, ドル円）
 │   └── 財務データ（BS, PL, CF, 基本情報）
 │
