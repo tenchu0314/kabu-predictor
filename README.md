@@ -11,7 +11,19 @@
 - 🎯 翌日/5日/20日/60日の**マルチホライゾン予測**
 - 💎 予測スコア × ファンダメンタル × リスク調整の**総合スコアリング**
 - 🧠 **Gemini API**による銘柄レビュー・コメント生成
-- ⏰ cron対応の自動実行（毎朝6:00 JST）
+- ⏰ cron対応の自動実行（日次予測 + 週次モデル学習）
+
+## 推奨環境
+
+本システムは **cron による自動実行** と **機械学習モデルの定期的な再学習** を前提としており、以下のような環境での常時運用を想定しています。
+
+- 🖥️ **自宅サーバー / VPS / クラウドVM**（常時稼働する Linux マシン）
+- 🐧 **OS**: Ubuntu 22.04 以降推奨（WSL2 でも動作可）
+- 🐍 **Python**: 3.10 以降
+- 💾 **メモリ**: 8GB 以上推奨（Optuna 最適化時に消費が増加します）
+- 💽 **ストレージ**: 5GB 以上の空き容量（銘柄データ・学習済みモデル保存用）
+
+> 💡 日次予測は軽量ですが、週次のモデル再学習（Optuna 最適化含む）には数時間かかる場合があります。十分なスペックのマシンを常時稼働させておくことを推奨します。
 
 ## セットアップ
 
@@ -39,39 +51,43 @@ source .env
 
 ## 使い方
 
-### フルパイプライン実行（全フェーズ）
+### フルパイプライン実行（初回セットアップ時）
 
 ```bash
 python main.py
 ```
 
+### 日次予測（データ取得 → 特徴量 → 予測、モデル学習なし）
+
+```bash
+python main.py --phase daily
+```
+
+### 週次モデル学習（銘柄更新 → データ取得 → 特徴量 → 学習）
+
+```bash
+python main.py --phase weekly
+```
+
 ### フェーズ別実行
 
 ```bash
-# Phase 1: データ取得のみ
-python main.py --phase data
-
-# Phase 2: 特徴量生成のみ
-python main.py --phase features
-
-# Phase 3: モデル学習のみ
-python main.py --phase train
-
-# Phase 4: 予測・レポートのみ
-python main.py --phase predict
+python main.py --phase data       # データ取得のみ
+python main.py --phase features    # 特徴量生成のみ
+python main.py --phase train       # モデル学習のみ
+python main.py --phase predict     # 予測・レポートのみ
 ```
 
 ### オプション
 
 ```bash
-# 銘柄リストを強制更新
-python main.py --update-stocks
-
-# Optuna最適化をスキップ（高速実行）
-python main.py --no-optimize
+python main.py --update-stocks     # 銘柄リストを強制更新
+python main.py --no-optimize       # Optuna最適化をスキップ（高速実行）
 ```
 
-### cron設定
+### cron 自動実行の設定
+
+以下のスクリプトで、日次予測（月〜金 6:00 JST）と週次学習（日曜 0:00 JST）の 2 つの cron ジョブを登録します。
 
 ```bash
 bash scripts/setup_cron.sh
@@ -123,7 +139,7 @@ main.py
 ## ディレクトリ構成
 
 ```
-kabu/
+kabu-predictor/
 ├── config/settings.py          # 設定
 ├── data/
 │   ├── stocks/                 # 銘柄別データ
@@ -145,6 +161,7 @@ kabu/
 ## 注意事項
 
 - ⚠️ このツールは投資判断の補助として使用してください。投資の最終判断はご自身の責任で行ってください。
-- 📡 yfinance はYahoo Financeの非公式APIであり、レートリミットの影響を受ける場合があります。
-- 🕐 初回実行時はデータ取得に時間がかかります（300銘柄×2年分）。
-- 💻 モデル学習（Optuna最適化あり）には数時間かかる場合があります。
+- 📡 yfinance は Yahoo Finance の非公式 API であり、レートリミットの影響を受ける場合があります。
+- 🕐 初回実行時はデータ取得に時間がかかります（700〜800 銘柄 × 2 年分の株価 + 財務データ）。
+- 💻 モデル学習（Optuna 最適化あり）には数時間かかる場合があります。
+- 🔁 キャッシュ機能により、同日中の再実行時は API リクエストがスキップされます。
