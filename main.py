@@ -201,6 +201,12 @@ def phase_predict(all_data: dict):
     # レポート保存
     save_daily_report(scored, top_n, gemini_review)
 
+    # 通知送信（Discord優先、メールはフォールバック）
+    from src.utils.discord_notifier import send_daily_report_discord
+    from src.utils.email_sender import send_daily_report_email
+    if not send_daily_report_discord(ranking_text, gemini_review):
+        send_daily_report_email(ranking_text, gemini_review)
+
     logger.info("Phase 4 完了")
 
 

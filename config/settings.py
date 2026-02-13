@@ -5,6 +5,11 @@ Kabu Predictor - 設定ファイル
 import os
 from pathlib import Path
 
+
+def _env(key: str, default: str = "") -> str:
+    """環境変数を取得し、前後の空白・改行を除去する（CRLF対策）"""
+    return os.environ.get(key, default).strip()
+
 # ============================================================
 # パス設定
 # ============================================================
@@ -26,7 +31,7 @@ for d in [STOCK_DATA_DIR, INDEX_DATA_DIR, MASTER_DATA_DIR,
 # ============================================================
 # API Keys
 # ============================================================
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY = _env("GEMINI_API_KEY")
 
 # ============================================================
 # データ取得設定
@@ -148,8 +153,26 @@ GEMINI_MODEL = "gemini-2.0-flash"
 GEMINI_MAX_TOKENS = 4096
 
 # ============================================================
+# Discord 通知設定
+# ============================================================
+DISCORD_BOT_TOKEN = _env("DISCORD_BOT_TOKEN")
+DISCORD_CHANNEL_ID = _env("DISCORD_CHANNEL_ID")
+
+# ============================================================
+# メール通知設定（オプション、Discord を使わない場合）
+# ============================================================
+# EMAIL_TO のみ設定 → ローカルの sendmail コマンドで送信
+# SMTP_SERVER 等も設定 → 外部SMTPサーバー経由で送信
+SMTP_SERVER = _env("SMTP_SERVER")
+SMTP_PORT = int(_env("SMTP_PORT", "587"))
+SMTP_USER = _env("SMTP_USER")
+SMTP_PASSWORD = _env("SMTP_PASSWORD")
+EMAIL_TO = _env("EMAIL_TO")
+
+# ============================================================
 # ログ設定
 # ============================================================
 LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_FILE = LOG_DIR / "kabu_predictor.log"
+
