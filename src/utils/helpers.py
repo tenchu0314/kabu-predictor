@@ -73,6 +73,19 @@ def rate_limit_sleep(interval: float = 0.5) -> None:
     time.sleep(interval)
 
 
+def is_cache_fresh(filepath: Path, max_age_hours: int = 20) -> bool:
+    """
+    ファイルのキャッシュが新鮮かどうか判定する。
+    max_age_hours 以内に更新されていれば True を返す。
+    デフォルトは20時間（当日の朝6時実行 → 翌朝2時まで有効）。
+    """
+    if not filepath.exists():
+        return False
+    mtime = datetime.fromtimestamp(filepath.stat().st_mtime, tz=JST)
+    age = get_jst_now() - mtime
+    return age < timedelta(hours=max_age_hours)
+
+
 def sanitize_filename(name: str) -> str:
     """ファイル名に使えない文字を置換する"""
     invalid_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*']

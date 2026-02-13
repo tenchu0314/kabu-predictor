@@ -14,10 +14,21 @@ from src.utils.helpers import (
     save_dataframe,
     save_json,
     load_json,
+    is_cache_fresh,
 )
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _df_to_json_safe_dict(df: pd.DataFrame) -> dict:
+    """DataFrameをJSON保存可能なdictに変換する（Timestampキー対策）"""
+    # カラム（決算日等）がTimestamp型の場合、文字列に変換
+    df = df.copy()
+    df.columns = [str(c) for c in df.columns]
+    # インデックス（勘定科目名等）も文字列に
+    df.index = [str(i) for i in df.index]
+    return df.to_dict()
 
 
 def fetch_financial_data(ticker: str) -> dict:
@@ -72,7 +83,7 @@ def fetch_financial_data(ticker: str) -> dict:
         try:
             financials = t.financials
             if financials is not None and not financials.empty:
-                result["financials"] = financials.to_dict()
+                result["financials"] = _df_to_json_safe_dict(financials)
         except Exception as e:
             logger.debug(f"{ticker}: financials取得エラー: {e}")
 
@@ -80,7 +91,7 @@ def fetch_financial_data(ticker: str) -> dict:
         try:
             balance_sheet = t.balance_sheet
             if balance_sheet is not None and not balance_sheet.empty:
-                result["balance_sheet"] = balance_sheet.to_dict()
+                result["balance_sheet"] = _df_to_json_safe_dict(balance_sheet)
         except Exception as e:
             logger.debug(f"{ticker}: balance_sheet取得エラー: {e}")
 
@@ -88,7 +99,7 @@ def fetch_financial_data(ticker: str) -> dict:
         try:
             cashflow = t.cashflow
             if cashflow is not None and not cashflow.empty:
-                result["cashflow"] = cashflow.to_dict()
+                result["cashflow"] = _df_to_json_safe_dict(cashflow)
         except Exception as e:
             logger.debug(f"{ticker}: cashflow取得エラー: {e}")
 
@@ -132,8 +143,21 @@ def fetch_all_financials(tickers: Optional[list[str]] = None) -> None:
     logger.info(f"全銘柄の財務データ取得開始: {len(tickers)} 件")
     success = 0
     fail = 0
+    skipped = 0
 
     for i, ticker in enumerate(tickers):
+        # キャッシュチェック：info.jsonが新鮮ならスキップ
+        folder_name = get_stock_folder_name(ticker)
+        info_path = settings.STOCK_DATA_DIR / folder_name / "info.json"
+        if is_cache_fresh(info_path):
+            skipped += 1
+            if (i + 1) % 50 == 0:
+                logger.info(
+                    f"  進捗: {i+1}/{len(tickers)} "
+                    f"(取得: {success}, スキップ: {skipped}, 失敗: {fail})"
+                )
+            continue
+
         data = fetch_financial_data(ticker)
         if data:
             save_financial_data(ticker, data)
@@ -142,8 +166,14 @@ def fetch_all_financials(tickers: Optional[list[str]] = None) -> None:
             fail += 1
 
         if (i + 1) % 50 == 0:
-            logger.info(f"  進捗: {i+1}/{len(tickers)} (成功: {success}, 失敗: {fail})")
+            logger.info(
+                f"  進捗: {i+1}/{len(tickers)} "
+                f"(取得: {success}, スキップ: {skipped}, 失敗: {fail})"
+            )
 
         rate_limit_sleep(settings.FETCH_INTERVAL)
 
-    logger.info(f"財務データ取得完了: 成功 {success} 件, 失敗 {fail} 件")
+    logger.info(
+        f"財務データ取得完了: 取得 {success} 件, "
+        f"スキップ {skipped} 件, 失敗 {fail} 件"
+    )

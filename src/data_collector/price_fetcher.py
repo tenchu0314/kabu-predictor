@@ -13,6 +13,7 @@ from src.utils.helpers import (
     rate_limit_sleep,
     save_dataframe,
     load_dataframe,
+    is_cache_fresh,
 )
 from src.utils.logger import get_logger
 
@@ -68,8 +69,15 @@ def load_price_history(ticker: str) -> Optional[pd.DataFrame]:
     return load_dataframe(filepath)
 
 
-def fetch_and_save_price(ticker: str) -> Optional[pd.DataFrame]:
-    """株価データを取得して保存する"""
+def fetch_and_save_price(ticker: str, force: bool = False) -> Optional[pd.DataFrame]:
+    """株価データを取得して保存する（キャッシュが新鮮ならスキップ）"""
+    folder_name = get_stock_folder_name(ticker)
+    filepath = settings.STOCK_DATA_DIR / folder_name / "price_history.csv"
+
+    if not force and is_cache_fresh(filepath):
+        logger.debug(f"{ticker}: キャッシュが新鮮なためスキップ")
+        return load_dataframe(filepath)
+
     df = fetch_price_history(ticker)
     if df is not None:
         save_price_history(ticker, df)
@@ -87,9 +95,21 @@ def fetch_all_prices(tickers: Optional[list[str]] = None) -> dict[str, pd.DataFr
     results = {}
     success = 0
     fail = 0
+    skipped = 0
 
     for i, ticker in enumerate(tickers):
-        df = fetch_and_save_price(ticker)
+        folder_name = get_stock_folder_name(ticker)
+        filepath = settings.STOCK_DATA_DIR / folder_name / "price_history.csv"
+
+        if is_cache_fresh(filepath):
+            # キャッシュが新鮮 → ローカルから読み込み
+            df = load_dataframe(filepath)
+            if df is not None:
+                results[ticker] = df
+                skipped += 1
+                continue
+
+        df = fetch_and_save_price(ticker, force=True)
         if df is not None:
             results[ticker] = df
             success += 1
@@ -97,11 +117,17 @@ def fetch_all_prices(tickers: Optional[list[str]] = None) -> dict[str, pd.DataFr
             fail += 1
 
         if (i + 1) % 50 == 0:
-            logger.info(f"  進捗: {i+1}/{len(tickers)} (成功: {success}, 失敗: {fail})")
+            logger.info(
+                f"  進捗: {i+1}/{len(tickers)} "
+                f"(取得: {success}, スキップ: {skipped}, 失敗: {fail})"
+            )
 
         rate_limit_sleep(settings.FETCH_INTERVAL)
 
-    logger.info(f"株価データ取得完了: 成功 {success} 件, 失敗 {fail} 件")
+    logger.info(
+        f"株価データ取得完了: 取得 {success} 件, "
+        f"スキップ {skipped} 件, 失敗 {fail} 件"
+    )
     return results
 
 
