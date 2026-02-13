@@ -13,19 +13,18 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def _get_gemini_model():
-    """Gemini APIのモデルインスタンスを取得する"""
+def _get_gemini_client():
+    """Gemini APIのクライアントを取得する"""
     if not settings.GEMINI_API_KEY:
         logger.warning("GEMINI_API_KEY が設定されていません")
         return None
 
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel(settings.GEMINI_MODEL)
-        return model
+        from google import genai
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        return client
     except ImportError:
-        logger.error("google-generativeai パッケージがインストールされていません")
+        logger.error("google-genai パッケージがインストールされていません")
         return None
     except Exception as e:
         logger.error(f"Gemini API 初期化エラー: {e}")
@@ -106,14 +105,17 @@ def review_with_gemini(top_df: pd.DataFrame) -> str:
     str
         レビュー結果の整形テキスト
     """
-    model = _get_gemini_model()
-    if model is None:
+    client = _get_gemini_client()
+    if client is None:
         return "（Gemini APIが利用できないため、レビューをスキップしました）"
 
     prompt = build_review_prompt(top_df)
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL,
+            contents=prompt,
+        )
         raw_text = response.text
 
         # JSONを抽出して整形
