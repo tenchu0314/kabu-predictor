@@ -2,13 +2,21 @@
 Kabu Predictor - 設定ファイル
 すべての設定値を一元管理する
 """
+
 import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+
+# .env ファイルを自動読み込み（cron等の環境でも確実に環境変数を設定）
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env_path, override=False)
 
 
 def _env(key: str, default: str = "") -> str:
     """環境変数を取得し、前後の空白・改行を除去する（CRLF対策）"""
     return os.environ.get(key, default).strip()
+
 
 # ============================================================
 # パス設定
@@ -24,8 +32,14 @@ DAILY_REPORT_DIR = OUTPUT_DIR / "daily_reports"
 LOG_DIR = PROJECT_ROOT / "logs"
 
 # ディレクトリ作成
-for d in [STOCK_DATA_DIR, INDEX_DATA_DIR, MASTER_DATA_DIR,
-          MODEL_DIR, DAILY_REPORT_DIR, LOG_DIR]:
+for d in [
+    STOCK_DATA_DIR,
+    INDEX_DATA_DIR,
+    MASTER_DATA_DIR,
+    MODEL_DIR,
+    DAILY_REPORT_DIR,
+    LOG_DIR,
+]:
     d.mkdir(parents=True, exist_ok=True)
 
 # ============================================================
@@ -85,8 +99,8 @@ CORRELATION_PERIOD = 20
 # ============================================================
 # 予測ホライゾン（営業日）と重み
 PREDICTION_HORIZONS = {
-    1: 0.30,   # 翌営業日 - デイトレ重視
-    5: 0.30,   # 5営業日後 - 数日保有
+    1: 0.30,  # 翌営業日 - デイトレ重視
+    5: 0.30,  # 5営業日後 - 数日保有
     20: 0.25,  # 20営業日後 - 中期トレンド
     60: 0.15,  # 60営業日後 - 長期文脈
 }
@@ -96,7 +110,7 @@ PREDICTION_HORIZONS = {
 # ============================================================
 # ウォークフォワード検証
 WALK_FORWARD_TRAIN_MONTHS = 12  # 学習期間（月）
-WALK_FORWARD_TEST_MONTHS = 1    # 検証期間（月）
+WALK_FORWARD_TEST_MONTHS = 1  # 検証期間（月）
 
 # LightGBM デフォルトパラメータ
 LGBM_DEFAULT_PARAMS = {
@@ -123,9 +137,9 @@ OPTUNA_TIMEOUT = 3600  # 秒
 # ============================================================
 # 最終スコアの構成比
 SCORE_WEIGHTS = {
-    "prediction": 0.50,      # 予測スコア
-    "fundamental": 0.25,     # ファンダメンタルスコア
-    "risk_adjusted": 0.25,   # リスク調整スコア
+    "prediction": 0.50,  # 予測スコア
+    "fundamental": 0.25,  # ファンダメンタルスコア
+    "risk_adjusted": 0.25,  # リスク調整スコア
     "overheat_penalty": 0.30,  # 過熱ペナルティ（基本スコアに対する最大減点率）
 }
 
@@ -176,4 +190,3 @@ EMAIL_TO = _env("EMAIL_TO")
 LOG_LEVEL = "INFO"
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 LOG_FILE = LOG_DIR / "kabu_predictor.log"
-

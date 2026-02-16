@@ -30,11 +30,10 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # cronジョブの内容
-# 注意: cronはデフォルトで /bin/sh を使用するため、SHELL=/bin/bash を指定する
-# . (dot) コマンドは POSIX 互換で source と同等
-SHELL_LINE="SHELL=/bin/bash"
-DAILY_CRON="0 6 * * 1-5 cd ${PROJECT_DIR} && . ${ENV_FILE} && ${PYTHON} main.py --phase daily >> ${PROJECT_DIR}/logs/cron_daily.log 2>&1 # kabu-daily"
-WEEKLY_CRON="0 0 * * 0 cd ${PROJECT_DIR} && . ${ENV_FILE} && ${PYTHON} main.py --phase weekly >> ${PROJECT_DIR}/logs/cron_weekly.log 2>&1 # kabu-weekly"
+# 注意: 環境変数は python-dotenv が .env から自動読み込みするため、
+#       シェルでの source は不要
+DAILY_CRON="0 6 * * 1-5 cd ${PROJECT_DIR} && ${PYTHON} main.py --phase daily >> ${PROJECT_DIR}/logs/cron_daily.log 2>&1 # kabu-daily"
+WEEKLY_CRON="0 0 * * 0 cd ${PROJECT_DIR} && ${PYTHON} main.py --phase weekly >> ${PROJECT_DIR}/logs/cron_weekly.log 2>&1 # kabu-weekly"
 
 echo "以下の2つのcronジョブを登録します:"
 echo ""
@@ -47,8 +46,8 @@ echo ""
 
 read -p "登録しますか? (y/n): " answer
 if [ "$answer" = "y" ] || [ "$answer" = "Y" ]; then
-    # 既存のkabuジョブとSHELL設定を削除して新しいものを追加
-    (crontab -l 2>/dev/null | grep -v "kabu-daily" | grep -v "kabu-weekly" | grep -v "^SHELL="; echo "${SHELL_LINE}"; echo "${DAILY_CRON}"; echo "${WEEKLY_CRON}") | crontab -
+    # 既存のkabuジョブを削除して新しいものを追加
+    (crontab -l 2>/dev/null | grep -v "kabu-daily" | grep -v "kabu-weekly" | grep -v "^SHELL="; echo "${DAILY_CRON}"; echo "${WEEKLY_CRON}") | crontab -
     echo ""
     echo "✅ cronジョブを登録しました"
     echo ""
